@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e9b4f889-058c-4c26-864c-72a394729e94" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="f918f2fe-1b0c-4b09-a6db-9e174fbb310a" >
+		<db:my-sql-connection host="127.0.0.1" port="3306" user="root" password="Msdc1986" database="workorder"/>
+	</db:config>
+	<flow name="workordermanagementFlow" doc:id="13d26a5e-dfb4-4e13-9021-ebc92b8060d8" >
+		<http:listener doc:name="Listener" doc:id="093dbea0-2807-4f3d-a4e7-5e7d79159c1a" config-ref="HTTP_Listener_config" path="/workorder"/>
+		<flow-ref doc:name="Flow Reference" doc:id="d53ffbd0-2dc3-401c-b356-6d9ce45776c9" name="addworkorder"/>
+	</flow>
+	<flow name="addworkorder" doc:id="8a2fe6d4-158f-409c-8cc7-0f02fd7bee95" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="a15e38e2-44ab-432a-bf35-f7ab12ff772a" message="Start of a logger" />
+		<db:insert doc:id="d8544055-4fd9-4c4a-9ce3-167ce0be8b7e" config-ref="Database_Config" doc:name="Insert" >
+			<db:sql ><![CDATA[Insert into workorder.PMS_WORK_ORDERS(WORK_ORDER_ID,CREATOR_ID,PPTY_ID,PRIORITY,STATUS,ASSIGNED_TO_VENDOR,,DESCRIPTION,SERVICE,DEPARTMENT,ESTIMATED_COST,ACTUAL_COST) values(:WORK_ORDER_ID,:CREATOR_ID,:PPTY_ID,:PRIORITY,:STATUS,:ASSIGNED_TO_VENDOR,:DESCRIPTION,:SERVICE,:DEPARTMENT,:ESTIMATED_COST,:ACTUAL_COST)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	STATUS: payload.STATUS,
+    DESCRIPTION : payload.DESCRIPTION, 
+	WORK_ORDER_ID: payload.WORK_ORDER_ID,
+	ASSIGNED_TO_VENDOR: payload.ASSIGNED_TO_VENDOR,
+	PPTY_ID: payload.PPTY_ID,
+	PRIORITY: payload.PRIORITY,
+	SERVICE: payload.SERVICE,
+	DEPARTMENT: payload.DEPARTMENT,
+	ACTUAL_COST: payload.ACTUAL_COST,
+	CREATOR_ID: payload.CREATOR_ID,
+	ESTIMATED_COST: payload.ESTIMATED_COST
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="832288b8-ee52-4820-88a0-0e8fb09e9058" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "LOCATION DETAILS for services added successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="eb91b5d6-9eb3-4ccc-b9e4-574786627e72" message="End of  a logger" />
+	</flow>
+	<flow name="selectworkorder" doc:id="5d8c0a54-c773-4c08-9b9e-aa061844c5b2" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="e9f98973-1a41-4517-9cd9-582ed4e2bb0d" message="Start of a logger" />
+		<db:select doc:id="a19dda64-8809-41f5-bf15-1ab1a45d3d2e" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from wordorder.PMS_WORK_ORDERS where PPTY_ID=:PPTY_ID,STATUS=:STATUS]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+PPTY_ID:attributes.queryParams.ppty_id,
+STATUS:attributes.queryParams.status
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="f52354a7-4977-4b65-b349-276b65136056" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="198de063-b661-46fd-874b-5db98669d509" message="End of a logger" />
+	</flow>
+	<flow name="updateworkorder" doc:id="685aa75c-4ca9-4b64-9d66-6fa398925976" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="71ccdd6b-1c6b-4f90-a4e4-288116b462fc" message="Start of a logger" />
+		<db:update doc:id="5552d3ef-f491-4b45-9e29-19b23834a25f" config-ref="Database_Config" doc:name="Update" >
+			<db:sql ><![CDATA[Update workorder.PMS_WORK_ORDERS set(CREATOR_ID=:CREATOR_ID,PPTY_ID=:PPTY_ID,PRIORITY=:PRIORITY,STATUS=:STATUS,ASSIGNED_TO_VENDOR=:ASSIGNED_TO_VENDOR,DESCRIPTION=:DESCRIPTION,SERVICE=:SERVICE,DEPARTMENT=:DEPARTMENT,ESTIMATED_COST=:ESTIMATED_COST,ACTUAL_COST=:ACTUAL_COST) where WORK_ORDER_ID=:WORK_ORDER_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	STATUS: payload.STATUS,
+    DESCRIPTION : payload.DESCRIPTION, 
+	WORK_ORDER_ID: attributes.uriParams.WORK_ORDER_ID,
+	ASSIGNED_TO_VENDOR: payload.ASSIGNED_TO_VENDOR,
+	PPTY_ID: payload.PPTY_ID,
+	PRIORITY: payload.PRIORITY,
+	SERVICE: payload.SERVICE,
+	DEPARTMENT: payload.DEPARTMENT,
+	ACTUAL_COST: payload.ACTUAL_COST,
+	CREATOR_ID: payload.CREATOR_ID,
+	ESTIMATED_COST: payload.ESTIMATED_COST
+}]]]></db:input-parameters>
+		</db:update>
+		<ee:transform doc:name="Transform Message" doc:id="86d6e92a-b72a-46f5-80b6-09b857d66ef6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Vendor bank account details updated successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="af7609dc-ffed-4289-a019-544224307b12" message="End of a logger" />
+	</flow>
+	<flow name="deleteworkorder" doc:id="abb15fbc-6d19-4e38-82b6-0b44b0257813" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="722199bd-f18d-42c9-b886-b54474554f9b" message="Start of a logger" />
+		<db:delete doc:id="98fcf05e-dc9f-4f22-b269-6942bce865e2" config-ref="Database_Config" doc:name="Delete" >
+			<db:sql ><![CDATA[Delete from workorder.PMS_WORK_ORDERS where WORK_ORDER_ID=:WORK_ORDER_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+WORK_ORDER_ID:attributes.uriParams.work_order_id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="3032ec54-8435-4585-a17a-e318e5bf468e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Rental Application deleted successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="03055fb6-e7c8-4fb2-94e2-b05faac9a5b8" message="End of a logger" />
+	</flow>
+	<flow name="getupdatedworkorder" doc:id="576d2854-c33e-4d76-994f-84542258dd95" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="94445927-5a19-449f-be84-8b2fdb799415" message="Start of a logger" />
+		<db:select doc:id="4f068524-ce46-4dff-a51a-66b599d77da0" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from workorder.PMS_WORK_ORDER_UPDATESV1 where ID=:ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+ID:attributes.uriParams.id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="86f769c8-6833-4320-853a-2680884e025c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="22e3f91d-f666-425c-b65f-6e2c414ae506" message="End of a logger" />
+	</flow>
+	<flow name="createworkorderdepartment" doc:id="2a1227f3-15d6-4d64-9dbe-edd705500a9f" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="c09c2053-d4d1-4a66-9c4f-dbe6704c71ae" message="Start of a logger" />
+		<db:insert doc:id="66b36b8b-b32b-4f7f-85bd-250c5cc99e20" config-ref="Database_Config" doc:name="Insert" >
+			<db:sql ><![CDATA[Insert into workorder.PMS_WORK_ORDER_DEPT(DEPT_ID,DEPARTMENT) values(:DEPT_ID,:DEPARTMENT)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	DEPT_ID: payload.DEPT_ID,
+	DEPARTMENT: payload.DEPARTMENT,
+	
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="90c100bf-32be-4c2f-9307-416d7aff7ff9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "LOCATION DETAILS for services added successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="d0cc8f50-9ecb-46cc-ac82-f22beb5a6420" message="End of  a logger" />
+	</flow>
+	<flow name="getworkorderdept" doc:id="7486320f-e748-419e-b8c7-4c69a090b6c8" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="60584815-dafa-4c15-bd3e-f4889bce65b7" message="Start of a logger" />
+		<db:select doc:id="0a13aeb7-9fed-4355-927b-d5ac093a766a" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from workorder.PMS_WORK_ORDER_DEPT where DEPARTMENT=:DEPARTMENT]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+DEPARTMENT:attributes.uriParams.department
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="7414f0e4-f2b6-4697-b3fd-b3678e1d8941" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="fc3ddce4-e8f4-4800-a50f-0db7339825e8" message="End of a logger" />
+	</flow>
+	<flow name="getworkorderdeptbyid" doc:id="4a52bed9-b079-463a-80b4-a25e5a971c4d" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="e9669e2a-cbda-4f71-af8d-d609f663101d" message="Start of a logger" />
+		<db:select doc:id="58ba6b83-c5b5-47e9-9189-5705349225a9" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from workorder.PMS_WORK_ORDER_DEPT where DEPT_ID=:DEPT_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+DEPT_ID:attributes.uriParams.dept_id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="e27e26fe-44dc-43dd-aa60-713f697af44d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="f4fe8c04-8c0a-4f0d-a563-7ffe42d83056" message="End of a logger" />
+	</flow>
+	<flow name="deleteworkorderdeptbyid" doc:id="bc10c6ce-d480-44cd-b69c-549424318237" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="b80a5a72-4dcc-4147-9931-0b4700089067" message="Start of a logger" />
+		<db:delete doc:id="be58ab77-14d4-4a99-99e0-6223cac8c722" config-ref="Database_Config" doc:name="Delete" >
+			<db:sql ><![CDATA[Delete from workorder.PMS_WORK_ORDER_DEPT where DEPT_ID=:DEPT_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+DEPT_ID:attributes.uriParams.dept_id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="b8c4ae97-003c-41a2-a3e7-e1e87c04f29f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Rental Application deleted successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="840b4254-01b7-4594-8b88-4e5f2bd692a1" message="End of a logger" />
+	</flow>
+	<flow name="addservice" doc:id="af516ec5-ba1a-4446-a568-974a4fe1a458" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="7e2644ec-b7ab-409d-b7e9-d2c1d3c97019" message="Start of a logger" />
+		<db:insert doc:id="2890ab70-277b-47be-a752-55a5b3f9655b" config-ref="Database_Config" doc:name="Insert" >
+			<db:sql ><![CDATA[Insert into workorder.PMS_WORK_ORDER_SERVICES(SERVICE_ID,DEPT_ID,SERVICES) values(:SERVICE_ID,:DEPT_ID,:SERVICES)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	SERVICE_ID:payload.SERVICE_ID,
+	DEPT_ID: payload.DEPT_ID,
+	SERVICES: payload.SERVICES
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="0b1f4f6e-52b7-4add-8faa-711527c09fb2" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "LOCATION DETAILS for services added successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="1379bd56-bee3-42a2-a582-50742e5b94e8" message="End of  a logger" />
+	</flow>
+	<flow name="getservice" doc:id="20e75be6-7cfd-4757-bb08-58acd672cdf7" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="ef83b381-844e-4894-b3c4-85a679135c53" message="Start of a logger" />
+		<db:select doc:id="d369c2ff-4ac3-47bc-bb6b-b64c065c7ff3" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from workorder.PMS_WORK_ORDER_SERVICES where SERVICE_ID=:SERVICE_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+SERVICE_ID: attributes.uriParams.service_id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="ce3f105d-c2fc-47cc-8ecf-b8e9b4f2eeac" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="6f0533b2-456e-4050-8cfa-0727ab6b7f09" message="End of a logger" />
+	</flow>
+	<flow name="deleteservicebyid" doc:id="cddd4731-119e-45f7-b55c-d54e8fc3217a" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="864ac935-753f-41bc-a970-f21fee102684" message="Start of a logger" />
+		<db:delete doc:id="15eaa35e-137b-41c9-b3f8-c2fe525965e1" config-ref="Database_Config" doc:name="Delete" >
+			<db:sql ><![CDATA[Delete from workorder.PMS_WORK_ORDER_SERVICES where SERVICE_ID=:SERVICE_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+SERVICE_ID:attributes.uriParams.service_id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="da36a953-d48d-427d-bd30-30ce7eab864a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Rental Application deleted successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="273dce26-e2ab-4c7c-93ad-df71b1fba2e6" message="End of a logger" />
+	</flow>
+	<flow name="addlocation" doc:id="733a9505-3203-48a4-95e6-c018b9478d06" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="f120ab87-872f-4547-bf36-0d4e6e7fee51" message="Start of a logger" />
+		<db:insert doc:id="08b03118-a283-4a17-84bc-6241babef5ce" config-ref="Database_Config" doc:name="Insert" >
+			<db:sql ><![CDATA[Insert into workorder.PMS_WORKLOCATION(WORK_ORDER_ID,AREA,CITY,STATE,PINCODE) values(:WORK_ORDER_ID,:AREA,:CITY,:STATE,:PINCODE)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	AREA: payload.AREA,
+	CITY: payload.CITY,
+	WORK_ORDER_ID: payload.WORK_ORDER_ID,
+	STATE: payload.STATE,
+	PINCODE: payload.PINCODE
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="7576a405-d9c4-48b0-b9af-1b0eca11d067" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "LOCATION DETAILS for services added successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="7d8db65a-f499-4ec6-aa4f-7f6f5b0fadc8" message="End of  a logger" />
+	</flow>
+	<flow name="getlocation" doc:id="2697deab-84b0-495b-90ac-114eb227055d" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="121af619-8696-4eac-bb0d-333dab16dd23" message="Start of a logger" />
+		<db:select doc:id="a70fe485-f330-4545-8ac6-77c4e14134af" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from workorder.PMS_LOCATION from AREA=:AREA,STATE=:STATE]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+AREA:attributes.uriParams.area,
+PINCODE:attributes.uriParams.pincode
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="bf7e659c-f0f3-49cd-afdf-d372391a9a9f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="0f48f483-4dbf-4236-bbbf-d718949e6282" message="End of a logger" />
+	</flow>
+	<flow name="getlocationbyid" doc:id="d0b1966d-be64-46de-ba71-94bacc24e8cc" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="8a0eee96-17e2-45c0-b8ed-0ef8840ac841" message="Start of a logger" />
+		<db:select doc:id="0d56a1f8-22a2-4a77-b607-f25ebab72856" config-ref="Database_Config" doc:name="Select" >
+			<db:sql ><![CDATA[select * from workorder.PMS_WORKLOCATION where WORK_ORDER_ID=:WORK_ORDER_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+WORK_ORDER_ID: attributes.uriParams.work_order_id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="efef75a3-e5dc-4ee1-8fde-52ef0e5f1f41" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="c3004fb8-5436-429f-bbc8-762376d3f083" message="End of a logger" />
+	</flow>
+	<flow name="deletelocations" doc:id="e626b693-847f-4170-bb23-6b51549e1dcc" >
+		<logger level="INFO" doc:name="Initial Logger" doc:id="638f63a8-4e44-4bc6-8aff-06bc71c1a27b" message="Start of a logger" />
+		<db:delete doc:id="71bb88d5-a896-4d00-a81a-b3e22a7582b8" config-ref="Database_Config" doc:name="Delete" >
+			<db:sql ><![CDATA[Delete from workorder.PMS_LOCATION where WORK_ORDER_ID=:WORK_ORDER_ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+WORK_ORDER_ID: attributes.uriParams.work_order_id
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="1a1cb2a0-10af-42f3-b19b-850df7985815" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Rental Application deleted successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="End Logger" doc:id="c8cc8ec1-d7ae-40df-a3be-94b4b584de12" message="End of a logger" />
+	</flow>
+</mule>
